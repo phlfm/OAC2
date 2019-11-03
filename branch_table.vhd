@@ -45,29 +45,29 @@ architecture branch_table of branch_table is
 	--          01 => Fracamente nao tomar
 	--          10 => Fracamente tomar
 	--          11 => Fortemente tomar
-	signal state : bit_vector(tableSize*2-1 downto 0) := ( others => '0');
-	signal instruction_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
-	signal branch_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
+	signal s_state : bit_vector(tableSize*2-1 downto 0) := ( others => '0');
+	signal s_instruction_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
+	signal s_branch_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
 
 begin
 
 tableProc: process(clock, reset) is
-	variable current_stateW : bit_vector(1 downto 0) := ( others => '0');
-	variable next_stateW : bit_vector(1 downto 0) := ( others => '0');
-	variable read_prediction: bit := '0';
-	variable read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
+	variable v_current_stateW : bit_vector(1 downto 0) := ( others => '0');
+	variable v_next_stateW : bit_vector(1 downto 0) := ( others => '0');
+	variable v_read_prediction: bit := '0';
+	variable v_read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
 
 -- as variaveis acima sao settadas na logica dentro do ELSE do if abaixo.
 -- depois que as variaveis sao settadas, as saidas da entity sao assinaladas fora do if
 begin
 if reset = '1' then
 -- atribuicao de signals
-	state <= ( others => '0');
-	instruction_addr <= ( others => '0');
-	branch_addr <= ( others => '0');
+	s_state <= ( others => '0');
+	s_instruction_addr <= ( others => '0');
+	s_branch_addr <= ( others => '0');
 -- atribuicao de variaveis
-	read_prediction := '0';
-	read_branchAddr := (others => '0');
+	v_read_prediction := '0';
+	v_read_branchAddr := (others => '0');
 
 else -- else do reset
 	if rising_edge(clock) then
@@ -80,26 +80,26 @@ else -- else do reset
 			-- faz um for procurando o addrW (input) na tabela
 			search_instruction_addr_on_write: for iW in (tableSize-1) to 0 loop
 			-- se addr(tabela) = addrW(input), entao atualiza o estado
-				if instruction_addr(addrSize*(iW+1)-1 downto addrSize*iW) = instruction_addrW then
-					current_stateW := state((iW+1)*2-1 downto (iW+1)*2-2);
+				if s_instruction_addr(addrSize*(iW+1)-1 downto addrSize*iW) = instruction_addrW then
+					v_current_stateW := s_state((iW+1)*2-1 downto (iW+1)*2-2);
 				-- atualiza o estado
 					if branch_result = '1' then
 					-- incrementa o estado
-						case current_stateW is
-							when "00" => next_stateW := "01";
-							when "01" => next_stateW := "10";
-							when others => next_stateW := "11";
+						case v_current_stateW is
+							when "00" => v_next_stateW := "01";
+							when "01" => v_next_stateW := "10";
+							when others => v_next_stateW := "11";
 						end case;
 					else
 					-- decrementa o estado
-						case current_stateW is
-							when "11" => next_stateW := "10";
-							when "10" => next_stateW := "01";
-							when others => next_stateW := "00";
+						case v_current_stateW is
+							when "11" => v_next_stateW := "10";
+							when "10" => v_next_stateW := "01";
+							when others => v_next_stateW := "00";
 						end case;
 				 	end if; -- if da atualizacao de estado (branch_result)
 					-- atualiza o estado de fato:
-					state((iW+1)*2-1 downto (iW+1)*2-2) <= next_stateW;
+					s_state((iW+1)*2-1 downto (iW+1)*2-2) <= v_next_stateW;
 				else -- NAO encontrou a entrada no buffer, criar uma nova:
 					-- TODO: criar nova entrada
 				end if; -- if addr(tabela) = addrW(input)
@@ -113,31 +113,31 @@ else -- else do reset
 		-- faz um for procurando o addrW (input) na tabela
 		search_instruction_addr_on_read: for iR in (tableSize-1) to 0 loop
 		-- se addr(tabela) = addrW(input), entao atualiza o estado
-			if instruction_addr(addrSize*(iR+1)-1 downto addrSize*iR) = instruction_addrR then
-				current_stateW := state((iR+1)*2-1 downto (iR+1)*2-2);
-				read_prediction := current_stateW(1);
-				read_branchAddr := branch_addr(addrSize*(iR+1)-1 downto addrSize*iR);
+			if s_instruction_addr(addrSize*(iR+1)-1 downto addrSize*iR) = instruction_addrR then
+				v_current_stateW := s_state((iR+1)*2-1 downto (iR+1)*2-2);
+				v_read_prediction := v_current_stateW(1);
+				v_read_branchAddr := s_branch_addr(addrSize*(iR+1)-1 downto addrSize*iR);
 				EXIT;
 			else -- NAO encontrou a entrada no buffer, fazer output da predicao = 0
-				read_prediction := '0';
-				read_branchAddr := (others => '0');
+				v_read_prediction := '0';
+				v_read_branchAddr := (others => '0');
 			end if;  -- if addr(tabela) = addrR(input)
 		end loop search_instruction_addr_on_read;
 	end if; -- rising_edge(clock)
 end if;	-- else do reset
 
 -- Assinalar os sinais da entity (os outputs) DAQUI PRA BAIXO!! \/
-	branch_addrR <= read_branchAddr;
-	prediction <= read_prediction;
+	branch_addrR <= v_read_branchAddr;
+	prediction <= v_read_prediction;
 end process tableProc;
 
 
 end branch_table;
 
--- ULTIMA COMPILACAO: MODELSIM 2019-11-03 20:49
+-- ULTIMA COMPILACAO:
 -- vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # Model Technology ModelSim - Intel FPGA Edition vcom 10.5b Compiler 2016.10 Oct  5 2016
--- # Start time: 20:49:34 on Nov 03,2019
+-- # Start time: 20:56:45 on Nov 03,2019
 -- # vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # -- Loading package STANDARD
 -- # -- Loading package TEXTIO
@@ -145,5 +145,5 @@ end branch_table;
 -- # -- Loading package NUMERIC_BIT
 -- # -- Compiling entity branch_table
 -- # -- Compiling architecture branch_table of branch_table
--- # End time: 20:49:34 on Nov 03,2019, Elapsed time: 0:00:00
+-- # End time: 20:56:45 on Nov 03,2019, Elapsed time: 0:00:00
 -- # Errors: 0, Warnings: 0
