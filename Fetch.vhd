@@ -10,20 +10,20 @@ entity Fetch is
     );
 	port (
 		clock: in bit;
-        reset: in bit;	
-        
+        reset: in bit;
+
 		PCSrc: in bit;
 		BranchAddress: in bit_vector(doubleword-1 downto 0);
-		
+
 		PCout: out bit_vector(doubleword-1 downto 0);
 		instruction: out bit_vector(word-1 downto 0);
-		
-		
-		--LÓGICA DA PREVISÃO DE DESVIO 
+
+
+		--Lï¿½GICA DA PREVISï¿½O DE DESVIO
 		branch_prediction_in: in bit;
 		branch_prediction_out: out bit
 	);
-		
+
 end entity Fetch;
 
 architecture Fetch of Fetch is
@@ -46,8 +46,8 @@ architecture Fetch of Fetch is
         s:      in  bit; -- selection: 0=a, 1=b
         a, b:   in	bit_vector(ws-1 downto 0); -- inputs
         o:  	out	bit_vector(ws-1 downto 0)  -- output
-    ); 
-    end component;	
+    );
+    end component;
 
     component alu is
         port (
@@ -75,11 +75,11 @@ architecture Fetch of Fetch is
     signal temp_instruction : bit_vector(31 downto 0);
 
     signal four : signed(63 downto 0) := "0000000000000000000000000000000000000000000000000000000000000100";
-	
-	--LÓGICA DA PREVISÃO DE DESVIO 
+
+	--Lï¿½GICA DA PREVISï¿½O DE DESVIO
 	signal temp_branch_prediction_in: bit_vector (0 downto 0);
 	signal temp_branch_prediction_out: bit_vector (0 downto 0);
-	
+
 begin
 
     Fetch_mux : mux2to1 generic map (doubleWord) port map (
@@ -90,15 +90,15 @@ begin
     );
 
     Fetch_PC : reg generic map (doubleWord) port map (
-        clock => clock, 
-        reset => reset, 
+        clock => clock,
+        reset => reset,
         load => '1',
         d => temp_PC_in,
         q => temp_PC_out
     );
 
     Fetch_adder : alu port map (
-        A => signed(temp_PC_Out),
+        A => signed(temp_PC_out),
         B => four,
         F => adder_result,
         S => "0010",
@@ -112,29 +112,29 @@ begin
 
     Instruction_Reg : reg generic map (word) port map (
         clock => clock,
-        reset => reset, 
+        reset => reset,
         load => '1',
         d => temp_instruction,
         q => instruction
     );
 
     PC_Reg : reg generic map (doubleWord) port map (
-        clock => clock, 
-        reset => reset, 
-        load => '1', 
+        clock => clock,
+        reset => reset,
+        load => '1',
         d => temp_PC_out,
         q => PCout
     );
-	
-	--LÓGICA DA PREVISÃO DE DESVIO
+
+	--Lï¿½GICA DA PREVISï¿½O DE DESVIO
 	temp_branch_prediction_in(0) <= branch_prediction_in;
 	Branch_Reg : reg generic map (1) port map (
-        clock => clock, 
-        reset => reset, 
-        load => '1', 
+        clock => clock,
+        reset => reset,
+        load => '1',
         d => temp_branch_prediction_in,
         q => temp_branch_prediction_out
-    );	 
+    );
 	branch_prediction_out <= temp_branch_prediction_out(0);
-	
-end architecture Fetch;	
+
+end architecture Fetch;
