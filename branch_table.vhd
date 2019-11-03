@@ -17,13 +17,7 @@ entity branch_table is
 	generic
 	(
 		addrSize	: NATURAL	:= 8; -- tamanho do bus de enderecos
-		tableSize	: NATURAL	:= 16; -- quantos desvios guardar na tabela
-		selectorSize : NATURAL := 4 -- como regra, selectorSize = numero de 1's em (tableSize-1) e tableSize = potencia de 2.
--- selectorSize precisa ser grande o suficiente para acomodar tableSize, exemplo:
--- se tableSize = 8, entao vamos acessar de 0 a (8-1), entao temos de 0 a 7, logo
-	-- selectorSize precisa ser 3 para acomodar 000 a 111
--- se tableSize = 16, entao vamos acessar de 0 a (16-1), entao temos de 0 a 15, logo
-	-- selectorSize precisa ser 4 para acomodar 0000 a 1111
+		tableSize	: NATURAL	:= 16 -- quantos desvios guardar na tabela
 	);
 	 port(
          clock:    in 	bit;
@@ -52,26 +46,29 @@ architecture branch_table of branch_table is
 	--          10 => Fracamente tomar
 	--          11 => Fortemente tomar
 	signal state : bit_vector(tableSize*2-1 downto 0) := ( others => '0');
-	--signal next_state : bit_vector(tableSize*2-1 downto 0) := ( others => '0');
 	signal instruction_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
 	signal branch_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
-
-	signal selector : unsigned(selectorSize-1 downto 0) := (others=> '0');
 
 begin
 
 tableProc: process(clock, reset) is
-variable current_stateW : bit_vector(1 downto 0) := ( others => '0');
-variable next_stateW : bit_vector(1 downto 0) := ( others => '0');
-variable read_prediction: bit := '0';
-variable read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
+	variable current_stateW : bit_vector(1 downto 0) := ( others => '0');
+	variable next_stateW : bit_vector(1 downto 0) := ( others => '0');
+	variable read_prediction: bit := '0';
+	variable read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
 
+-- as variaveis acima sao settadas na logica dentro do ELSE do if abaixo.
+-- depois que as variaveis sao settadas, as saidas da entity sao assinaladas fora do if
 begin
 if reset = '1' then
+-- atribuicao de signals
 	state <= ( others => '0');
 	instruction_addr <= ( others => '0');
 	branch_addr <= ( others => '0');
-	selector <= ( others => '0');
+-- atribuicao de variaveis
+	read_prediction := '0';
+	read_branchAddr := (others => '0');
+
 else -- else do reset
 	if rising_edge(clock) then
 ---------------------------------------------------
@@ -126,25 +123,27 @@ else -- else do reset
 				read_branchAddr := (others => '0');
 			end if;  -- if addr(tabela) = addrR(input)
 		end loop search_instruction_addr_on_read;
-			branch_addrR <= read_branchAddr;
-			prediction <= read_prediction;
 	end if; -- rising_edge(clock)
 end if;	-- else do reset
+
+-- Assinalar os sinais da entity (os outputs) DAQUI PRA BAIXO!! \/
+	branch_addrR <= read_branchAddr;
+	prediction <= read_prediction;
 end process tableProc;
 
 
 end branch_table;
 
--- ULTIMA COMPILACAO: MODELSIM 2019-11-03 20:39
---vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
---# Model Technology ModelSim - Intel FPGA Edition vcom 10.5b Compiler 2016.10 Oct  5 2016
---# Start time: 20:38:40 on Nov 03,2019
---# vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
---# -- Loading package STANDARD
---# -- Loading package TEXTIO
---# -- Loading package std_logic_1164
---# -- Loading package NUMERIC_BIT
---# -- Compiling entity branch_table
---# -- Compiling architecture branch_table of branch_table
---# End time: 20:38:40 on Nov 03,2019, Elapsed time: 0:00:00
---# Errors: 0, Warnings: 0
+-- ULTIMA COMPILACAO: MODELSIM 2019-11-03 20:49
+-- vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
+-- # Model Technology ModelSim - Intel FPGA Edition vcom 10.5b Compiler 2016.10 Oct  5 2016
+-- # Start time: 20:49:34 on Nov 03,2019
+-- # vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
+-- # -- Loading package STANDARD
+-- # -- Loading package TEXTIO
+-- # -- Loading package std_logic_1164
+-- # -- Loading package NUMERIC_BIT
+-- # -- Compiling entity branch_table
+-- # -- Compiling architecture branch_table of branch_table
+-- # End time: 20:49:34 on Nov 03,2019, Elapsed time: 0:00:00
+-- # Errors: 0, Warnings: 0
