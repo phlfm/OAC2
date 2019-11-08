@@ -120,9 +120,9 @@ else -- else do reset
 			-- se NAO encontrou a entrada no buffer, criar uma nova:
 			if v_found_branch_instruction_onWrite = '0' then
 				if branch_result = '1' then
-					s_state(to_integer(v_ringBufferCount+1)*2-1 downto to_integer(v_ringBufferCount)*2-2) <= "10"; -- Assinala a entrada nova no estado 10
+					s_state(to_integer(v_ringBufferCount)*2+1 downto to_integer(v_ringBufferCount)*2) <= "10"; -- Assinala a entrada nova no estado 10
 				else
-					s_state(to_integer(v_ringBufferCount+1)*2-1 downto to_integer(v_ringBufferCount)*2-2) <= "01"; -- Assinala a entrada nova no estado 10
+					s_state(to_integer(v_ringBufferCount)*2+1 downto to_integer(v_ringBufferCount)*2) <= "01"; -- Assinala a entrada nova no estado 10
 				end if;
 				s_instruction_addr(to_integer(v_ringBufferCount+1)*addrSize-1 downto to_integer(v_ringBufferCount)*addrSize) <= instruction_addrW;
 				s_branch_addr(to_integer(v_ringBufferCount+1)*addrSize-1 downto to_integer(v_ringBufferCount)*addrSize) <= branch_addrW;
