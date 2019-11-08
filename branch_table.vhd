@@ -128,7 +128,6 @@ else -- else do reset
 				if v_ringBufferCount = (tableSize-1) then
 					v_ringBufferCount := (others => '0');
 				end if;
-				--s_ringBufferCount <= v_ringBufferIndex;
 			end if; -- if v_found_branch_instruction = 0
 		end if; -- if branch_instruction (eh o write)
 ---------------------------------------------------
@@ -140,9 +139,7 @@ else -- else do reset
 		search_instruction_addr_on_read: for iR in (tableSize-1) to 0 loop
 		-- se addr(tabela) = addrW(input), entao atualiza o estado
 			if s_instruction_addr(addrSize*(iR+1)-1 downto addrSize*iR) = instruction_addrR then
-				-- TODO: remover v_current_stateW
-				v_current_stateW := s_state((iR+1)*2-1 downto (iR+1)*2-2);
-				v_read_prediction := v_current_stateW(1);
+				v_read_prediction := s_state((iR+1)*2-1);
 				v_read_branchAddr := s_branch_addr(addrSize*(iR+1)-1 downto addrSize*iR);
 				EXIT search_instruction_addr_on_read;
 			else -- NAO encontrou a entrada no buffer, fazer output da predicao = 0
@@ -154,8 +151,8 @@ else -- else do reset
 end if;	-- else do reset
 
 -- Assinalar os sinais da entity (os outputs) DAQUI PRA BAIXO!! \/
-	branch_addrR <= v_read_branchAddr;
 	prediction <= v_read_prediction;
+	branch_addrR <= v_read_branchAddr;
 end process tableProc;
 
 
@@ -164,12 +161,12 @@ end branch_table;
 -- ULTIMA COMPILACAO:
 -- vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # Model Technology ModelSim - Intel FPGA Edition vcom 10.5b Compiler 2016.10 Oct  5 2016
--- # Start time: 23:58:41 on Nov 07,2019
+-- # Start time: 00:03:24 on Nov 08,2019
 -- # vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # -- Loading package STANDARD
 -- # -- Loading package TEXTIO
 -- # -- Loading package NUMERIC_BIT
 -- # -- Compiling entity branch_table
 -- # -- Compiling architecture branch_table of branch_table
--- # End time: 23:58:41 on Nov 07,2019, Elapsed time: 0:00:00
+-- # End time: 00:03:24 on Nov 08,2019, Elapsed time: 0:00:00
 -- # Errors: 0, Warnings: 0
