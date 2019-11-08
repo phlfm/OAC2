@@ -10,14 +10,19 @@
 -- O modulo vai guardar o addrW numa tabela junto com a maquina de estados de previsao associado a esse addr.
 
 library IEEE;
-use IEEE.std_logic_1164.all;
 use ieee.numeric_bit.all;
 
 entity branch_table is
 	generic
 	(
 		addrSize	: NATURAL	:= 8; -- tamanho do bus de enderecos
-		tableSize	: NATURAL	:= 16 -- quantos desvios guardar na tabela
+		tableSize	: NATURAL	:= 16; -- quantos desvios guardar na tabela
+		ringBufferSize : NATURAL := 4 -- como regra, ringBufferSize = numero de 1's em (tableSize-1) e tableSize = potencia de 2.
+		-- ringBufferSize precisa ser grande o suficiente para acomodar tableSize, exemplo:
+		-- se tableSize = 8, entao vamos acessar de 0 a (8-1), entao temos de 0 a 7, logo
+		-- ringBufferSize precisa ser 3 para acomodar 000 a 111
+		-- se tableSize = 16, entao vamos acessar de 0 a (16-1), entao temos de 0 a 15, logo
+		-- ringBufferSize precisa ser 4 para acomodar 0000 a 1111
 	);
 	 port(
          clock:    in 	bit;
@@ -48,6 +53,7 @@ architecture branch_table of branch_table is
 	signal s_state : bit_vector(tableSize*2-1 downto 0) := ( others => '0');
 	signal s_instruction_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
 	signal s_branch_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
+	--signal s_ringBufferCount : bit_vector(ringBufferSize-1 downto 0) := ( others => '0');
 
 begin
 
@@ -56,7 +62,8 @@ tableProc: process(clock, reset) is
 	variable v_next_stateW : bit_vector(1 downto 0) := ( others => '0');
 	variable v_read_prediction: bit := '0';
 	variable v_read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
-	variable v_found_branch_instruction : bit := '0';
+	variable v_found_branch_instruction_onWrite : bit := '0';
+	variable v_ringBufferCount : unsigned(ringBufferSize-1 downto 0) := ( others => '0');
 
 -- as variaveis acima sao settadas na logica dentro do ELSE do if abaixo.
 -- depois que as variaveis sao settadas, as saidas da entity sao assinaladas fora do if
@@ -69,7 +76,8 @@ if reset = '1' then
 -- atribuicao de variaveis
 	v_read_prediction := '0';
 	v_read_branchAddr := (others => '0');
-	v_found_branch_instruction := '0';
+	v_found_branch_instruction_onWrite := '0';
+	v_ringBufferCount := (others => '0');
 
 else -- else do reset
 	if rising_edge(clock) then
@@ -79,12 +87,12 @@ else -- else do reset
 -- TODOS OS INDICES DAQUI P BAIXO DEVEM SER iW (ate a secao de read)
 		-- faz write e depois read
 		if branch_instruction = '1' then
-			v_found_branch_instruction := '0';
+			v_found_branch_instruction_onWrite := '0';
 			-- faz um for procurando o addrW (input) na tabela
 			search_instruction_addr_on_write: for iW in (tableSize-1) to 0 loop
 			-- se addr(tabela) = addrW(input), entao atualiza o estado
 				if s_instruction_addr(addrSize*(iW+1)-1 downto addrSize*iW) = instruction_addrW then
-					v_found_branch_instruction := '1';
+					v_found_branch_instruction_onWrite := '1';
 					v_current_stateW := s_state((iW+1)*2-1 downto (iW+1)*2-2);
 				-- atualiza o estado
 					if branch_result = '1' then
@@ -104,12 +112,23 @@ else -- else do reset
 				 	end if; -- if da atualizacao de estado (branch_result)
 					-- atualiza o estado de fato:
 					s_state((iW+1)*2-1 downto (iW+1)*2-2) <= v_next_stateW;
-				EXIT;
+				EXIT search_instruction_addr_on_write;
 				end if; -- if addr(tabela) = addrW(input)
 			end loop search_instruction_addr_on_write;
 			-- se NAO encontrou a entrada no buffer, criar uma nova:
-			if v_found_branch_instruction = '0' then
-				-- TODO: criar nova entrada
+			if v_found_branch_instruction_onWrite = '0' then
+				if branch_result = '1' then
+					s_state(to_integer(v_ringBufferCount+1)*2-1 downto to_integer(v_ringBufferCount)*2-2) <= "10"; -- Assinala a entrada nova no estado 10
+				else
+					s_state(to_integer(v_ringBufferCount+1)*2-1 downto to_integer(v_ringBufferCount)*2-2) <= "01"; -- Assinala a entrada nova no estado 10
+				end if;
+				s_instruction_addr(to_integer(v_ringBufferCount+1)*addrSize-1 downto to_integer(v_ringBufferCount)*addrSize) <= instruction_addrW;
+				s_branch_addr(to_integer(v_ringBufferCount+1)*addrSize-1 downto to_integer(v_ringBufferCount)*addrSize) <= branch_addrW;
+				v_ringBufferCount := v_ringBufferCount+1;
+				if v_ringBufferCount = (tableSize-1) then
+					v_ringBufferCount := (others => '0');
+				end if;
+				--s_ringBufferCount <= v_ringBufferIndex;
 			end if; -- if v_found_branch_instruction = 0
 		end if; -- if branch_instruction (eh o write)
 ---------------------------------------------------
@@ -121,10 +140,11 @@ else -- else do reset
 		search_instruction_addr_on_read: for iR in (tableSize-1) to 0 loop
 		-- se addr(tabela) = addrW(input), entao atualiza o estado
 			if s_instruction_addr(addrSize*(iR+1)-1 downto addrSize*iR) = instruction_addrR then
+				-- TODO: remover v_current_stateW
 				v_current_stateW := s_state((iR+1)*2-1 downto (iR+1)*2-2);
 				v_read_prediction := v_current_stateW(1);
 				v_read_branchAddr := s_branch_addr(addrSize*(iR+1)-1 downto addrSize*iR);
-				EXIT;
+				EXIT search_instruction_addr_on_read;
 			else -- NAO encontrou a entrada no buffer, fazer output da predicao = 0
 				v_read_prediction := '0';
 				v_read_branchAddr := (others => '0');
@@ -144,13 +164,12 @@ end branch_table;
 -- ULTIMA COMPILACAO:
 -- vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # Model Technology ModelSim - Intel FPGA Edition vcom 10.5b Compiler 2016.10 Oct  5 2016
--- # Start time: 20:56:45 on Nov 03,2019
+-- # Start time: 23:58:41 on Nov 07,2019
 -- # vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # -- Loading package STANDARD
 -- # -- Loading package TEXTIO
--- # -- Loading package std_logic_1164
 -- # -- Loading package NUMERIC_BIT
 -- # -- Compiling entity branch_table
 -- # -- Compiling architecture branch_table of branch_table
--- # End time: 20:56:45 on Nov 03,2019, Elapsed time: 0:00:00
+-- # End time: 23:58:41 on Nov 07,2019, Elapsed time: 0:00:00
 -- # Errors: 0, Warnings: 0
