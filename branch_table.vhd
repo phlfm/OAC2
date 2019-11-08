@@ -1,13 +1,15 @@
+-- Escola Politecnica da Universidade de Sao Paulo
+-- PCS3422 - Organizacao e Arquitetura de Computadores II
+-- 2019 - Autor: Pedro H L F de Mendonca
+
 -- Funcionamento:
-
 -- Estagio de FETCH:
--- writeEnable = 0, retorna prediction para addrR.
--- (Se a instrucao nao ta na branch_table, retorna 0, tudo continua normal)
--- (prediction eh consultado da tabela que eh escrita/populada no estagio execute)
-
+	-- writeEnable = 0, retorna prediction para addrR.
+	-- (Se a instrucao nao ta na branch_table, retorna 0, tudo continua normal)
+	-- (prediction eh consultado da tabela que eh escrita/populada no estagio execute)
 -- Estagio EXECUTE:
--- Se for instrucao de branch, coloca o end em addrW, writeEnable = 1 e escreve branch_result
--- O modulo vai guardar o addrW numa tabela junto com a maquina de estados de previsao associado a esse addr.
+	-- Se for instrucao de branch, coloca o end em addrW, writeEnable = 1 e escreve branch_result
+	-- O modulo vai guardar o addrW numa tabela junto com a maquina de estados de previsao associado a esse addr.
 
 library IEEE;
 use ieee.numeric_bit.all;
