@@ -9,13 +9,7 @@ entity branch_table_stimuli is
 	generic
 	(
 		addrSize	: NATURAL	:= 16; -- tamanho do bus de enderecos
-		tableSize	: NATURAL	:= 16; -- quantos desvios guardar na tabela
-		ringBufferSize : NATURAL := 4 -- como regra, ringBufferSize = numero de 1's em (tableSize-1) e tableSize = potencia de 2.
-		-- ringBufferSize precisa ser grande o suficiente para acomodar tableSize, exemplo:
-		-- se tableSize = 8, entao vamos acessar de 0 a (8-1), entao temos de 0 a 7, logo
-		-- ringBufferSize precisa ser 3 para acomodar 000 a 111
-		-- se tableSize = 16, entao vamos acessar de 0 a (16-1), entao temos de 0 a 15, logo
-		-- ringBufferSize precisa ser 4 para acomodar 0000 a 1111
+		tableSize	: NATURAL	:= 16 -- quantos desvios guardar na tabela
 	);
 	 port(
          clock:    out 	bit;
