@@ -56,6 +56,7 @@ tableProc: process(clock, reset) is
 	variable v_next_stateW : bit_vector(1 downto 0) := ( others => '0');
 	variable v_read_prediction: bit := '0';
 	variable v_read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
+	variable v_found_branch_instruction : bit := '0';
 
 -- as variaveis acima sao settadas na logica dentro do ELSE do if abaixo.
 -- depois que as variaveis sao settadas, as saidas da entity sao assinaladas fora do if
@@ -68,6 +69,7 @@ if reset = '1' then
 -- atribuicao de variaveis
 	v_read_prediction := '0';
 	v_read_branchAddr := (others => '0');
+	v_found_branch_instruction := '0';
 
 else -- else do reset
 	if rising_edge(clock) then
@@ -77,10 +79,12 @@ else -- else do reset
 -- TODOS OS INDICES DAQUI P BAIXO DEVEM SER iW (ate a secao de read)
 		-- faz write e depois read
 		if branch_instruction = '1' then
+			v_found_branch_instruction := '0';
 			-- faz um for procurando o addrW (input) na tabela
 			search_instruction_addr_on_write: for iW in (tableSize-1) to 0 loop
 			-- se addr(tabela) = addrW(input), entao atualiza o estado
 				if s_instruction_addr(addrSize*(iW+1)-1 downto addrSize*iW) = instruction_addrW then
+					v_found_branch_instruction := '1';
 					v_current_stateW := s_state((iW+1)*2-1 downto (iW+1)*2-2);
 				-- atualiza o estado
 					if branch_result = '1' then
@@ -100,10 +104,13 @@ else -- else do reset
 				 	end if; -- if da atualizacao de estado (branch_result)
 					-- atualiza o estado de fato:
 					s_state((iW+1)*2-1 downto (iW+1)*2-2) <= v_next_stateW;
-				else -- NAO encontrou a entrada no buffer, criar uma nova:
-					-- TODO: criar nova entrada
+				EXIT;
 				end if; -- if addr(tabela) = addrW(input)
 			end loop search_instruction_addr_on_write;
+			-- se NAO encontrou a entrada no buffer, criar uma nova:
+			if v_found_branch_instruction = '0' then
+				-- TODO: criar nova entrada
+			end if; -- if v_found_branch_instruction = 0
 		end if; -- if branch_instruction (eh o write)
 ---------------------------------------------------
 ------    READ    ---------------------------------
