@@ -89,8 +89,9 @@ begin -- process
     wait_test(2*5 ns);
 
     -- Test 3 - ver como se comporta em estado conhecido tudo zero
+	-- E da um offset nos valores para estarem estaveis na borda de clock
     reset <= '0';
-    wait_test(5*5 ns);
+    wait_test(27 ns);
 
     -- Test 4 a 30 - inserir varios valores...
     -- Quando teste PAR:
@@ -106,20 +107,20 @@ begin -- process
         -- o resultado do branch eh zero
     generate_tests_t1: for i1 in 4 to 30 loop
     if (i1 mod 2) = 0 then
-        s_addrIR <= converte(i1, addrSize);
-        s_addrIW <= converte((i1+1)*2, addrSize);
-        s_addrBW <= converte(i1*10+1, addrSize);
+        instruction_addrR <= converte(i1, addrSize);
+        instruction_addrW <= converte((i1+1)*2, addrSize);
+        branch_addrW <= converte(i1*10+1, addrSize);
         branch_result     <= '1'; -- EXECUTE: resultado do branch para atualizar
     else
-        s_addrIR <= converte(i1*2, addrSize);
-        s_addrIW <= converte(i1*2, addrSize);
-        s_addrBW <= (others => '0');
+        instruction_addrR <= converte(i1*2, addrSize);
+        instruction_addrW <= converte(i1*2, addrSize);
+        branch_addrW <= (others => '0');
         branch_result     <= '0'; -- EXECUTE: resultado do branch para atualizar
     end if;
-        instruction_addrR <= s_addrIR; -- FETCH - end da inst atual
+        --instruction_addrR <= s_addrIR; -- FETCH - end da inst atual
         branch_instruction<= '1'; -- EXECUTE:  age como um enable de escrita
-        instruction_addrW <= s_addrIW; -- EXECUTE: end da inst atual
-        branch_addrW      <= s_addrBW; -- end EXECUTE: para o qual desviar
+        --instruction_addrW <= s_addrIW; -- EXECUTE: end da inst atual
+        --branch_addrW      <= s_addrBW; -- end EXECUTE: para o qual desviar
         wait_test(5 ns);
     end loop generate_tests_t1;
 
