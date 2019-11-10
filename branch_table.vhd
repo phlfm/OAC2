@@ -52,7 +52,7 @@ architecture branch_table of branch_table is
 
 begin
 
-tableProc: process(clock, reset) is
+tableProc: process(clock, reset, s_state, s_instruction_addr, s_branch_addr) is
 	variable v_current_stateW : bit_vector(1 downto 0) := ( others => '0');
 	variable v_next_stateW : bit_vector(1 downto 0) := ( others => '0');
 	variable v_read_prediction: bit := '0';
@@ -137,11 +137,14 @@ else -- else do reset
 		-- faz um for procurando o addrW (input) na tabela
 		search_instruction_addr_on_read: for iR in (tableSize-1) downto 0 loop
 		-- se addr(tabela) = addrW(input), entao atualiza o estado
+			--report "iR: " & integer'image(iR);
 			if s_instruction_addr(addrSize*(iR+1)-1 downto addrSize*iR) = instruction_addrR then
-				v_read_prediction := s_state((iR+1)*2-1);
+				--report "vReadPrediction: " & integer'image(iR*2+1);
+				v_read_prediction := s_state(iR*2+1);
 				v_read_branchAddr := s_branch_addr(addrSize*(iR+1)-1 downto addrSize*iR);
 				EXIT search_instruction_addr_on_read;
 			else -- NAO encontrou a entrada no buffer, fazer output da predicao = 0
+				--report "vReadPrediction: NO BUFFER";
 				v_read_prediction := '0';
 				v_read_branchAddr := (others => '0');
 			end if;  -- if addr(tabela) = addrR(input)
