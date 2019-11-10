@@ -50,13 +50,18 @@ architecture branch_table of branch_table is
 	signal s_instruction_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
 	signal s_branch_addr : bit_vector(addrSize*tableSize-1 downto 0) := ( others => '0');
 
+	signal s_instruction_addrR: bit_vector(addrSize-1 downto 0) := (others => '0');
+	signal s_read_prediction: bit := '0';
+	signal s_read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
+
 begin
 
-tableProc: process(clock, reset, s_state, s_instruction_addr, s_branch_addr) is
+---------------------------------------------------
+------    WRITE    ---------------------------------
+---------------------------------------------------
+tableWRITE: process(clock, reset) is
 	variable v_current_stateW : bit_vector(1 downto 0) := ( others => '0');
 	variable v_next_stateW : bit_vector(1 downto 0) := ( others => '0');
-	variable v_read_prediction: bit := '0';
-	variable v_read_branchAddr : bit_vector(addrSize-1 downto 0) := ( others => '0');
 	variable v_found_branch_instruction_onWrite : bit := '0';
 	variable v_ringBufferCount : integer range 0 to (tableSize-1);
 
@@ -68,17 +73,14 @@ if reset = '1' then
 	s_state <= ( others => '0');
 	s_instruction_addr <= ( others => '0');
 	s_branch_addr <= ( others => '0');
+	s_instruction_addrR <= (others => '0');
 -- atribuicao de variaveis
-	v_read_prediction := '0';
-	v_read_branchAddr := (others => '0');
 	v_found_branch_instruction_onWrite := '0';
 	v_ringBufferCount := 0;
 
 else -- else do reset
 	if rising_edge(clock) then
----------------------------------------------------
-------    WRITE    ---------------------------------
----------------------------------------------------
+	s_instruction_addrR <= instruction_addrR;
 -- TODOS OS INDICES DAQUI P BAIXO DEVEM SER iW (ate a secao de read)
 		-- faz write e depois read
 		if branch_instruction = '1' then
@@ -129,46 +131,57 @@ else -- else do reset
 				--report "depois: " & integer'image((v_ringBufferCount));
 			end if; -- if v_found_branch_instruction = 0
 		end if; -- if branch_instruction (eh o write)
+	end if; -- rising_edge(clock)
+end if;	-- else do reset
+end process tableWRITE;
+
 ---------------------------------------------------
 ------    READ    ---------------------------------
 ---------------------------------------------------
--- TODOS OS INDICES DAQUI P BAIXO DEVEM SER iR
+tableREAD: process(clock, s_state, s_instruction_addr, s_branch_addr) is
+begin
+if reset = '1' then
+	s_read_prediction <= '0';
+	s_read_branchAddr <= ( others => '0');
+else
+	if falling_edge(clock) then
+	-- TODOS OS INDICES DAQUI P BAIXO DEVEM SER iR
 		-- ja fez write, agora faz read
 		-- faz um for procurando o addrW (input) na tabela
 		search_instruction_addr_on_read: for iR in (tableSize-1) downto 0 loop
 		-- se addr(tabela) = addrW(input), entao atualiza o estado
 			--report "iR: " & integer'image(iR);
-			if s_instruction_addr(addrSize*(iR+1)-1 downto addrSize*iR) = instruction_addrR then
+			if s_instruction_addr(addrSize*(iR+1)-1 downto addrSize*iR) = s_instruction_addrR then
 				--report "vReadPrediction: " & integer'image(iR*2+1);
-				v_read_prediction := s_state(iR*2+1);
-				v_read_branchAddr := s_branch_addr(addrSize*(iR+1)-1 downto addrSize*iR);
+				s_read_prediction <= s_state(iR*2+1);
+				s_read_branchAddr <= s_branch_addr(addrSize*(iR+1)-1 downto addrSize*iR);
 				EXIT search_instruction_addr_on_read;
 			else -- NAO encontrou a entrada no buffer, fazer output da predicao = 0
 				--report "vReadPrediction: NO BUFFER";
-				v_read_prediction := '0';
-				v_read_branchAddr := (others => '0');
+				s_read_prediction <= '0';
+				s_read_branchAddr <= (others => '0');
 			end if;  -- if addr(tabela) = addrR(input)
 		end loop search_instruction_addr_on_read;
 	end if; -- rising_edge(clock)
-end if;	-- else do reset
+end if; -- reset
+
+end process tableREAD;
 
 -- Assinalar os sinais da entity (os outputs) DAQUI PRA BAIXO!! \/
-	prediction <= v_read_prediction;
-	branch_addrR <= v_read_branchAddr;
-end process tableProc;
-
+	prediction <= s_read_prediction;
+	branch_addrR <= s_read_branchAddr;
 
 end branch_table;
 
 -- ULTIMA COMPILACAO:
 -- vcom -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # Model Technology ModelSim - Intel FPGA Edition vcom 10.5b Compiler 2016.10 Oct  5 2016
--- # Start time: 11:37:43 on Nov 10,2019
+-- # Start time: 12:41:16 on Nov 10,2019
 -- # vcom -reportprogress 300 -work work C:/temp/gitLEGv8/branch_table.vhd
 -- # -- Loading package STANDARD
 -- # -- Loading package TEXTIO
 -- # -- Loading package NUMERIC_BIT
 -- # -- Compiling entity branch_table
 -- # -- Compiling architecture branch_table of branch_table
--- # End time: 11:37:43 on Nov 10,2019, Elapsed time: 0:00:00
+-- # End time: 12:41:16 on Nov 10,2019, Elapsed time: 0:00:00
 -- # Errors: 0, Warnings: 0

@@ -87,7 +87,7 @@ begin -- process
     -- Test 3 - ver como se comporta em estado conhecido tudo zero
 	-- E da um offset nos valores para estarem estaveis na borda de clock
     reset <= '0';
-    wait_test(27 ns);
+    wait_test(27.5 ns);
 
 -- No teste SMALL a gente usa addrSize = 4 e tableSize = 4
 -- ou seja, da pra guardar 4 branches e enderecos de 0 a 15
@@ -263,11 +263,50 @@ begin -- process
 -- 09->10 (10)
 -- 10->10 (01)
 
-	-- Test 19 - dar um reset e ver se tudo continua funcionando
-    reset <= '1';
-    wait_test(5 ns);
+    -- Test 19 - A tabela esta cheia, vamos tentar inserir nova entrada enquanto lemos a 2a entrada (14)
+		instruction_addrR  <= 4D"14";
+		instruction_addrW  <= 4D"08";
+		branch_instruction <= '1';
+		branch_result  	   <= '0';
+		branch_addrW  	   <= 4D"15";
+        wait_test(5 ns);
+-- Estado da tabela:
+-- 14->06 (00) --> substituido: 06->11 (01)
+-- 07->13 (01) --> substituido: 14->15 (10)
+-- 09->10 (10) --> substituido: 08->15 (01)
+-- 10->10 (01)
 
-    -- Test 20 - ler o endereco 7, inserir end 8
+    -- Test 20 - A tabela esta cheia, vamos tentar inserir nova entrada enquanto lemos um read after write
+		instruction_addrR  <= 4D"07";
+		instruction_addrW  <= 4D"07";
+		branch_instruction <= '1';
+		branch_result  	   <= '1';
+		branch_addrW  	   <= 4D"01";
+        wait_test(5 ns);
+-- Estado da tabela:
+-- 14->06 (00) --> substituido: 06->11 (01)
+-- 07->13 (01) --> substituido: 14->15 (10)
+-- 09->10 (10) --> substituido: 08->15 (01)
+-- 10->10 (01) --> substituido: 07->01 (10)
+
+    -- Test 21 - A tabela esta cheia, vamos tentar inserir nova entrada enquanto lemos um read after write que caiu fora da tabela
+		instruction_addrR  <= 4D"06";
+		instruction_addrW  <= 4D"05";
+		branch_instruction <= '1';
+		branch_result  	   <= '1';
+		branch_addrW  	   <= 4D"02";
+        wait_test(7.5 ns);
+-- Estado da tabela:
+-- 14->06 (00) --> substituido: 05->02 (10)
+-- 07->13 (01) --> substituido: 14->15 (10)
+-- 09->10 (10) --> substituido: 08->15 (01)
+-- 10->10 (01) --> substituido: 07->01 (10)
+
+	-- Test 22 - dar um reset e ver se tudo continua funcionando
+    reset <= '1';
+    wait_test(10 ns);
+
+    -- Test 23 - ler o endereco 7, inserir end 8
 		reset <= '0';
 		instruction_addrR  <= 4D"7";
 		instruction_addrW  <= 4D"8";
@@ -278,7 +317,7 @@ begin -- process
 -- Estado da tabela:
 -- 08->13 (01)
 
-    -- Test 21 - ler o endereco 8 e NAO inserir o 9
+    -- Test 24 - ler o endereco 8 e NAO inserir o 9
 		instruction_addrR  <= 4D"8";
 		instruction_addrW  <= 4D"9";
 		branch_instruction <= '0';
